@@ -1,2 +1,2 @@
-# kananlento
+# Kananlento
 Peli jossa lennätetään kanaa 
