@@ -24,12 +24,14 @@ class Game:
             pygame.transform.rotozoom(x, 0, 1/16)
             for x in bird_imgs
         ]
-
-        self.bg_imgs = [
-            pygame.image.load(f"images/backround/layer_{i}.png")
+        bg_imgs = [
+            pygame.image.load(f"images/background/layer_{i}.png")
             for i in [1, 2, 3]
         ]
-
+        self.bg_imgs = [
+            pygame.transform.rotozoom(x, 0, 600 / x.get_height()).convert_alpha()
+            for x in bg_imgs
+        ]
 
     def init_objects(self):
         self.bird_y_speed = 0
@@ -65,6 +67,9 @@ class Game:
                     self.bird_lift = False
 
     def handle_game_logic(self):
+        self.bg0_pos -= 0.25
+        self.bg1_pos -= 0.5
+        self.bg2_pos -= 2
 
         bird_y = self.bird_pos[1]
 
@@ -83,10 +88,11 @@ class Game:
 
     def update_screen(self):
         # Täytä tausta vaaleansinisellä
-        self.screen.fill((230, 230, 255))
+        #self.screen.fill((230, 230, 255))
 
-        bg_img = pygame.transform.rotozoom(self.bg_imgs[0], 0, 0.25)
-        self.screen.blit(bg_img)
+        self.screen.blit(self.bg_imgs[0], (self.bg0_pos, 0))
+        self.screen.blit(self.bg_imgs[1], (self.bg1_pos, 0))
+        self.screen.blit(self.bg_imgs[2], (self.bg2_pos, 0))
 
         # Piirrä lintu
         angle = -90 * 0.04 * self.bird_y_speed
