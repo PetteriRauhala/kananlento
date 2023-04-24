@@ -1,5 +1,7 @@
 import pygame
-import random
+
+from menu import Menu
+from obstacle import Obstacle
 
 DEFAULT_SCREEN_SIZE = (800, 450)
 FPS_TEXT_COLOR = (128, 0, 128)  # dark purple
@@ -17,7 +19,14 @@ class Game:
     def __init__(self):
         pygame.init()
         self.clock = pygame.time.Clock()
+        self.menu = Menu([
+            "New Game",
+            "High Scores",
+            "About",
+            "Quit",
+        ])
         self.is_fullscreen = False
+        self.is_in_menu = True
         self.show_fps = True
         self.screen = pygame.display.set_mode(DEFAULT_SCREEN_SIZE)
         self.screen_w = self.screen.get_width()
@@ -28,6 +37,7 @@ class Game:
         self.init_objects()
 
     def init_graphics(self):
+        self.menu.set_font_size(int(48 * self.screen_h / 450))
         big_font_size = int(96 * self.screen_h / 450)
         self.font_big = pygame.font.Font("fonts/SyneMono-Regular.ttf", big_font_size)
         original_bird_images = [
@@ -87,9 +97,18 @@ class Game:
         self.running = True
 
         while self.running:
+            # Käsittele tapahtumat (eventit)
             self.handle_events()
+
+            # Pelin logiikka (liikkumiset, painovoima, yms.)
             self.handle_game_logic()
+
+            # Päivitä näyttö
             self.update_screen()
+
+            # Päivitä näytölle piirretyt asiat näkyviin
+            pygame.display.flip()
+
             # Odota niin kauan, että ruudun päivitysnopeus on 60fps
             self.clock.tick(60)
 
@@ -101,14 +120,31 @@ class Game:
                 self.running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key in (pygame.K_SPACE, pygame.K_UP):
-                    self.bird_lift = True
+                    if not self.is_in_menu:
+                        self.bird_lift = True
             elif event.type == pygame.KEYUP:
-                if event.key in (pygame.K_SPACE, pygame.K_UP):
-                    self.bird_lift = False
-                elif event.key in (pygame.K_f, pygame.K_F11):
+                if event.key in (pygame.K_f, pygame.K_F11):
                     self.toggle_fullscreen()
-                elif event.key in (pygame.K_r, pygame.K_RETURN):
-                    self.init_objects()
+                elif self.is_in_menu:
+                    if event.key == pygame.K_UP:
+                        self.menu.select_previous_item()
+                    elif event.key == pygame.K_DOWN:
+                        self.menu.select_next_item()
+                    elif event.key == pygame.K_RETURN:
+                        item = self.menu.get_selected_item()
+                        if item == "New Game":
+                            self.is_in_menu = False
+                            self.init_objects()
+                        elif item == "High Scores":
+                            pass  # TODO: Implement High Score view
+                        elif item == "About":
+                            pass  # TODO: Implement About view
+                        elif item == "Quit":
+                            self.running = False
+                elif event.key in (pygame.K_SPACE, pygame.K_UP):
+                    self.bird_lift = False
+                elif event.key == pygame.K_ESCAPE or not self.bird_alive:
+                    self.is_in_menu = True
 
     def toggle_fullscreen(self):
         old_w = self.screen_w
@@ -129,6 +165,9 @@ class Game:
         )
 
     def handle_game_logic(self):
+        if self.is_in_menu:
+            return
+
         if self.bird_alive:
             self.bg_pos[0] -= 0.5
             self.bg_pos[1] -= 1
@@ -203,6 +242,10 @@ class Game:
                 # ...niin aloita alusta
                 self.bg_pos[i] += self.bg_widths[i]
 
+        if self.is_in_menu:
+            self.menu.render(self.screen)
+            return
+
         for obstacle in self.obstacles:
             obstacle.render(self.screen)
 
@@ -240,59 +283,6 @@ class Game:
             fps_text = f"{self.clock.get_fps():.1f} fps"
             fps_img = self.font16.render(fps_text, True, FPS_TEXT_COLOR)
             self.screen.blit(fps_img, (0, 0))
-
-        pygame.display.flip()
-
-
-class Obstacle:
-    def __init__(self, position, upper_height, lower_height,
-                 hole_size, width=100):
-        self.position = position  # vasemman reunan sijainti
-        self.upper_height = upper_height
-        self.lower_height = lower_height
-        self.hole_size = hole_size
-        self.width = width
-        self.color = (0, 128, 0)  # dark green
-
-    @classmethod
-    def make_random(cls, screen_w, screen_h):
-        hole_size = random.randint(int(screen_h * 0.25),
-                                   int(screen_h * 0.75))
-        h2 = random.randint(int(screen_h * 0.15), int(screen_h * 0.75))
-        h1 = screen_h - h2 - hole_size
-        return cls(upper_height=h1, lower_height=h2,
-                   hole_size=hole_size, position=screen_w)
-
-    def move(self, speed):
-        self.position -= speed
-
-    def is_visible(self):
-        return self.position + self.width >= 0
-
-    def collides_with_circle(self, center, radius):
-        (x, y) = center
-        y1 = self.upper_height
-        y2 = self.upper_height + self.hole_size
-        p = self.position
-        q = self.position + self.width
-
-        if x - radius > q or x + radius < p:
-            return False
-
-        # Helpotetaan asiaa olettamalla ympyrä neliöksi
-        if y1 > y - radius or y2 < y + radius:
-            return True
-
-        return False
-
-    def render(self, screen):
-        x = self.position
-        uy = 0
-        uh = self.upper_height
-        pygame.draw.rect(screen, self.color, (x, uy, self.width, uh))
-        ly = screen.get_height() - self.lower_height
-        lh = self.lower_height
-        pygame.draw.rect(screen, self.color, (x, ly, self.width, lh))
 
 
 if __name__ == "__main__":
